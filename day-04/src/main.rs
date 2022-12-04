@@ -39,14 +39,8 @@ fn parse(filename: &str) -> Vec<(RangeInclusive<u64>, RangeInclusive<u64>)> {
             let (first_from, first_to) = first.split_once('-')?;
             let (second_from, second_to) = second.split_once('-')?;
             Some((
-                RangeInclusive::new(
-                    first_from.parse::<u64>().ok()?,
-                    first_to.parse::<u64>().ok()?,
-                ),
-                RangeInclusive::new(
-                    second_from.parse::<u64>().ok()?,
-                    second_to.parse::<u64>().ok()?,
-                ),
+                (first_from.parse::<u64>().ok()?..=first_to.parse::<u64>().ok()?),
+                (second_from.parse::<u64>().ok()?..=second_to.parse::<u64>().ok()?),
             ))
         })
         .collect()
