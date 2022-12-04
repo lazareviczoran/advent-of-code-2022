@@ -2,35 +2,27 @@ use std::{fs::read_to_string, ops::RangeInclusive};
 
 fn main() {
     let ranges = parse("input.txt");
-    println!(
-        "part1 solution: {}",
-        count_range_overlaps(&ranges, full_overlap)
-    );
-    println!(
-        "part1 solution: {}",
-        count_range_overlaps(&ranges, partial_overlap)
-    );
+    println!("part1 solution: {}", count_overlaps(&ranges, is_full));
+    println!("part2 solution: {}", count_overlaps(&ranges, is_partial));
 }
 
-fn count_range_overlaps<F>(
-    ranges: &[(RangeInclusive<u64>, RangeInclusive<u64>)],
-    filter_fn: F,
-) -> usize
+type RangePair = (RangeInclusive<u64>, RangeInclusive<u64>);
+fn count_overlaps<F>(ranges: &[RangePair], filter_fn: F) -> usize
 where
-    F: Fn(&&(RangeInclusive<u64>, RangeInclusive<u64>)) -> bool,
+    F: Fn(&&RangePair) -> bool,
 {
     ranges.iter().filter(filter_fn).count()
 }
 
-fn full_overlap((a, b): &&(RangeInclusive<u64>, RangeInclusive<u64>)) -> bool {
+fn is_full((a, b): &&RangePair) -> bool {
     a.start() <= b.start() && a.end() >= b.end() || b.start() <= a.start() && b.end() >= a.end()
 }
 
-fn partial_overlap((a, b): &&(RangeInclusive<u64>, RangeInclusive<u64>)) -> bool {
+fn is_partial((a, b): &&RangePair) -> bool {
     a.start() <= b.start() && a.end() >= b.start() || b.start() <= a.start() && b.end() >= a.start()
 }
 
-fn parse(filename: &str) -> Vec<(RangeInclusive<u64>, RangeInclusive<u64>)> {
+fn parse(filename: &str) -> Vec<RangePair> {
     read_to_string(filename)
         .expect("failed to read file")
         .lines()
@@ -48,17 +40,17 @@ fn parse(filename: &str) -> Vec<(RangeInclusive<u64>, RangeInclusive<u64>)> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{count_range_overlaps, full_overlap, parse, partial_overlap};
+    use crate::{count_overlaps, is_full, is_partial, parse};
 
     #[test]
     fn part1_test() {
         let ranges = parse("test-input.txt");
-        assert_eq!(count_range_overlaps(&ranges, full_overlap), 2)
+        assert_eq!(count_overlaps(&ranges, is_full), 2)
     }
 
     #[test]
     fn part2_test() {
         let ranges = parse("test-input.txt");
-        assert_eq!(count_range_overlaps(&ranges, partial_overlap), 4)
+        assert_eq!(count_overlaps(&ranges, is_partial), 4)
     }
 }
