@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 
 DAY=$(date|awk '{ printf("%02d\n", $3) }')
 YEAR=$(date|awk '{ print($6) }')
