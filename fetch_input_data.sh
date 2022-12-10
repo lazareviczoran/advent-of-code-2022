@@ -9,7 +9,7 @@ PROJECT_DIR=day-$DAY
 mkdir -p $WORKSPACE_DIR
 cd $WORKSPACE_DIR
 if [[ -z $(ls|grep "$PROJECT_DIR") ]]; then
-    cargo init $PROJECT_DIR
+    ~/.cargo/bin/cargo init $PROJECT_DIR
 fi
 cd $PROJECT_DIR
 cp ~/Library/Application\ Support/Firefox/Profiles/*.default-release/cookies.sqlite ./cookies_copy.sqlite
