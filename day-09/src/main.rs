@@ -2,31 +2,29 @@ use std::{collections::HashSet, fs::read_to_string};
 
 fn main() {
     let moves = parse("input.txt");
-    println!("part1 solution {}", count_visited_for_tail(&moves));
-    println!("part2 solution {}", count_visited_for_tail_2(&moves));
+    println!("part1 solution {}", count_visited_for_tail::<2>(&moves));
+    println!("part2 solution {}", count_visited_for_tail::<10>(&moves));
 }
 
-fn count_visited_for_tail_2(moves: &[Move]) -> usize {
-    let mut knots: [(isize, isize); 10] = [(0, 0); 10];
+fn count_visited_for_tail<const N: usize>(moves: &[Move]) -> usize {
+    let mut knots: [(isize, isize); N] = [(0, 0); N];
     let mut tail_visited = HashSet::from([(knots[0])]);
     for m in moves {
-        let (head_diff, repeat) = match m {
+        let (diff, repeat) = match m {
             Move::Right(steps) => ((1, 0), *steps),
             Move::Left(steps) => ((-1, 0), *steps),
             Move::Up(steps) => ((0, 1), *steps),
             Move::Down(steps) => ((0, -1), *steps),
         };
-        for i in 1..=repeat.unsigned_abs() {
-            for j in 0..knots.len() - 1 {
-                let prev_idx = j;
-                let current_tail_idx = 1 + j;
-                (knots[prev_idx], knots[current_tail_idx]) = make_move(
-                    knots[prev_idx],
-                    knots[current_tail_idx],
-                    head_diff,
+        for _ in 1..=repeat.unsigned_abs() {
+            knots[0] = (knots[0].0 + diff.0, knots[0].1 + diff.1);
+            for curr_idx in 0..knots.len() - 1 {
+                let next_idx = curr_idx + 1;
+                (knots[next_idx]) = move_tail(
+                    knots[curr_idx],
+                    knots[next_idx],
                     &mut tail_visited,
-                    prev_idx == 0,
-                    current_tail_idx == 9,
+                    next_idx == knots.len() - 1,
                 );
             }
         }
@@ -34,52 +32,18 @@ fn count_visited_for_tail_2(moves: &[Move]) -> usize {
     tail_visited.len()
 }
 
-fn count_visited_for_tail(moves: &[Move]) -> usize {
-    let mut curr_head: (isize, isize) = (0, 0);
-    let mut curr_tail: (isize, isize) = (0, 0);
-    let mut tail_visited = HashSet::from([curr_tail]);
-    for m in moves {
-        let (head_diff, repeat) = match m {
-            Move::Right(steps) => ((1, 0), *steps),
-            Move::Left(steps) => ((-1, 0), *steps),
-            Move::Up(steps) => ((0, 1), *steps),
-            Move::Down(steps) => ((0, -1), *steps),
-        };
-        for _ in 0..repeat {
-            (curr_head, curr_tail) = make_move(
-                curr_head,
-                curr_tail,
-                head_diff,
-                &mut tail_visited,
-                true,
-                true,
-            );
-        }
-    }
-    tail_visited.len()
-}
-
-fn make_move(
+fn move_tail(
     head: (isize, isize),
     tail: (isize, isize),
-    diff: (isize, isize),
     tail_visited: &mut HashSet<(isize, isize)>,
-    is_head: bool,
     mark_visited: bool,
-) -> ((isize, isize), (isize, isize)) {
-    let prev_head = head;
-    let (new_head, mut new_tail) = if is_head {
-        ((prev_head.0 + diff.0, prev_head.1 + diff.1), tail)
-    } else {
-        (prev_head, tail)
-    };
-    let (x_diff, y_diff) = ((new_head.0 - tail.0), (new_head.1 - tail.1));
+) -> (isize, isize) {
+    let mut new_tail = tail;
+    let (x_diff, y_diff) = ((head.0 - tail.0), (head.1 - tail.1));
     if x_diff.abs() == 2 || y_diff.abs() == 2 {
         if x_diff.abs() > 0 && y_diff.abs() > 0 {
-            if x_diff.abs() == 2 || y_diff.abs() == 2 {
-                new_tail.1 += y_diff.signum();
-                new_tail.0 += x_diff.signum();
-            }
+            new_tail.1 += y_diff.signum();
+            new_tail.0 += x_diff.signum();
         } else if x_diff == 0 {
             new_tail.1 += y_diff.signum();
         } else if y_diff == 0 {
@@ -89,7 +53,7 @@ fn make_move(
     if mark_visited {
         tail_visited.insert(new_tail);
     }
-    (new_head, new_tail)
+    new_tail
 }
 
 #[derive(Debug)]
@@ -119,24 +83,23 @@ fn parse(filename: &str) -> Vec<Move> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{count_visited_for_tail, count_visited_for_tail_2, parse};
+    use crate::{count_visited_for_tail, parse};
 
     #[test]
     fn part1_test() {
         let moves = parse("test-input.txt");
-        assert_eq!(count_visited_for_tail(&moves), 13);
+        assert_eq!(count_visited_for_tail::<2>(&moves), 13);
     }
 
     #[test]
     fn part2_test1() {
         let moves = parse("test-input.txt");
-        assert_eq!(count_visited_for_tail_2(&moves), 1);
-        // assert_eq!(2, 1);
+        assert_eq!(count_visited_for_tail::<10>(&moves), 1);
     }
 
     #[test]
     fn part2_test2() {
         let moves = parse("test-input2.txt");
-        assert_eq!(count_visited_for_tail_2(&moves), 36);
+        assert_eq!(count_visited_for_tail::<10>(&moves), 36);
     }
 }
