@@ -15,11 +15,11 @@ struct Game {
     monkeys: Vec<Monkey>,
 }
 impl Game {
-    fn play_n_rounds(&mut self, n: usize, divide: bool) {
+    fn play_n_rounds(&mut self, n: usize, divide_by_3: bool) {
         let prime_product = self.monkeys.iter().map(|m| m.divisible_by).product();
         for _ in 0..n {
             for m_idx in 0..self.monkeys.len() {
-                let items = self.monkeys[m_idx].inspect(divide, prime_product);
+                let items = self.monkeys[m_idx].inspect(divide_by_3, prime_product);
                 for (target_monkey, item) in items {
                     self.monkeys[target_monkey].items.push_back(item);
                 }
@@ -50,7 +50,7 @@ struct Monkey {
     inspected_items: usize,
 }
 impl Monkey {
-    fn inspect(&mut self, divide: bool, prime_product: isize) -> Vec<(usize, isize)> {
+    fn inspect(&mut self, divide_by_3: bool, prime_product: isize) -> Vec<(usize, isize)> {
         let mut result = Vec::new();
         while let Some(mut item) = self.items.pop_front() {
             match &self.operation {
@@ -58,10 +58,10 @@ impl Monkey {
                 Op::Multiply(value) => item *= value,
                 Op::Square => item *= item,
             }
-            if divide {
-                item /= 3;
+            match divide_by_3 {
+                true => item /= 3,
+                false => item %= prime_product,
             }
-            item %= prime_product;
             let target_monkey = match item % self.divisible_by {
                 0 => self.true_target,
                 _ => self.false_target,
