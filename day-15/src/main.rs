@@ -1,91 +1,88 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fs::read_to_string,
-    ops::RangeInclusive,
-};
+use std::{collections::HashMap, fs::read_to_string, ops::RangeInclusive};
 
 fn main() {
     let mut world = parse("input.txt");
     println!("part1 solution {}", world.count_unavailable_for_y(2000000));
-    // 4_000_000
+    println!("part2 solution {:?}", world.beacon_frequency(4_000_000));
 }
 
 #[derive(Debug)]
 struct World {
     sensors: Vec<Sensor>,
     map: HashMap<Point, char>,
-    visited: HashSet<Point>,
 }
 impl World {
     fn new() -> Self {
         Self {
             sensors: Vec::new(),
             map: HashMap::new(),
-            visited: HashSet::new(),
         }
-    }
-    fn reset(&mut self) {
-        self.visited.clear();
     }
 
-    fn find_distress_beacon_frequency(&mut self, limit: isize) -> u128 {
+    fn beacon_frequency(&mut self, limit: isize) -> Option<u128> {
         for y in 0..=limit {
-            let count = self.count_unavailable_for_y_in_x_range(y, Some(0..=limit));
-            println!("visited {count} for y = {y}");
-            if count <= limit as usize {
-                let x = (0..=limit)
-                    .position(|x| !self.visited.contains(&Point::new(x, y)))
-                    .unwrap();
-                println!("found x {x} y {y}");
-                return x as u128 * limit as u128 + y as u128;
+            let x = match self.find_ranges(y, Some(0..=limit)).as_slice() {
+                [(_, to_x1), (_, _)] => Some(*to_x1 + 1),
+                [(x1, x2)] if x2 - x1 < limit => Some(if *x1 != 0 { 0 } else { *x2 + 1 }),
+                _ => None,
+            };
+            if let Some(x) = x {
+                return Some(x as u128 * 4_000_000 + y as u128);
             }
         }
-        unreachable!()
+        None
     }
 
     fn count_unavailable_for_y(&mut self, y: isize) -> usize {
-        self.count_unavailable_for_y_in_x_range(y, None)
+        let ranges = self.find_ranges(y, None);
+        ranges.iter().map(|(x1, x2)| (x2 - x1).unsigned_abs()).sum()
     }
 
-    fn count_unavailable_for_y_in_x_range(
+    fn find_ranges(
         &mut self,
         y: isize,
         x_range: Option<RangeInclusive<isize>>,
-    ) -> usize {
-        self.sensors
-            .iter()
-            .filter_map(|sensor| {
-                let dist = sensor.pos.manhattan_distance(&sensor.closest_beacon);
-                if (sensor.pos.y - dist..=sensor.pos.y + dist).contains(&y) {
-                    let mut count = 0;
-                    for x_diff in 0..=dist {
-                        let next_point = Point::new(sensor.pos.x + x_diff, y);
-                        if (x_range.is_none() || x_range.as_ref().unwrap().contains(&next_point.x))
-                            && sensor.pos.manhattan_distance(&next_point) <= dist
-                            && !self.visited.contains(&next_point)
-                        {
-                            self.visited.insert(next_point);
-                            if self.map.get(&next_point).unwrap_or(&' ') != &'B' {
-                                count += 1;
-                            }
-                        }
-                        let next_point = Point::new(sensor.pos.x - x_diff, y);
-                        if (x_range.is_none() || x_range.as_ref().unwrap().contains(&next_point.x))
-                            && sensor.pos.manhattan_distance(&next_point) <= dist
-                            && !self.visited.contains(&next_point)
-                        {
-                            self.visited.insert(next_point);
-                            if self.map.get(&next_point).unwrap_or(&' ') != &'B' {
-                                count += 1;
-                            }
-                        }
-                    }
-                    Some(count)
-                } else {
-                    None
+    ) -> Vec<(isize, isize)> {
+        let range_limit = x_range.unwrap_or(isize::MIN..=isize::MAX);
+        self.sensors.iter().fold(Vec::new(), |mut acc, sensor| {
+            let dist = sensor.pos.manhattan_distance(&sensor.closest_beacon);
+            if (sensor.pos.y - dist..=sensor.pos.y + dist).contains(&y) {
+                let x_diff = dist - (sensor.pos.y - y).abs();
+                let mut range = (sensor.pos.x - x_diff, sensor.pos.x + x_diff);
+                if !range_limit.contains(&range.0) && !range_limit.contains(&range.1) {
+                    return acc;
                 }
-            })
-            .sum()
+                if range.0 < *range_limit.start() {
+                    range.0 = *range_limit.start();
+                }
+                if range.1 > *range_limit.end() {
+                    range.1 = *range_limit.end();
+                }
+                let items_to_merge = acc
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, &r)| {
+                        if range.1 < r.0 || range.0 > r.1 {
+                            None
+                        } else {
+                            Some((i, r))
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                for &(i, range_to_merge) in items_to_merge.iter().rev() {
+                    acc.remove(i);
+                    range = (range.0.min(range_to_merge.0), range.1.max(range_to_merge.1));
+                }
+                if !items_to_merge.is_empty() {
+                    acc.insert(items_to_merge[0].0, range);
+                } else if let Some(idx) = acc.iter().position(|r| range.1 < r.0) {
+                    acc.insert(idx, range);
+                } else {
+                    acc.push(range);
+                }
+            }
+            acc
+        })
     }
 }
 
@@ -150,6 +147,6 @@ mod tests {
     #[test]
     fn part2_test() {
         let mut world = parse("test-input.txt");
-        assert_eq!(world.find_distress_beacon_frequency(20), 56000011);
+        assert_eq!(world.beacon_frequency(20), Some(56000011));
     }
 }
